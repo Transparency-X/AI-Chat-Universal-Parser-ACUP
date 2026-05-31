@@ -1,0 +1,2 @@
+# ACUP v1.1 Dependencies
+playwright>=1.44.0

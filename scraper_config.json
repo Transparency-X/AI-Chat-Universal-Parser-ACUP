@@ -1,0 +1,14 @@
+{
+  "kimi": {
+    "chat_container": "[class*='chat-content']",
+    "message_turn": "[class*='message']",
+    "user_indicator": "[class*='user']",
+    "assistant_indicator": "[class*='assistant']"
+  },
+  "gemini": {
+    "chat_container": "[class*='chat-content']",
+    "message_turn": "[class*='message']",
+    "user_indicator": "[class*='user']",
+    "assistant_indicator": "[class*='model']"
+  }
+}

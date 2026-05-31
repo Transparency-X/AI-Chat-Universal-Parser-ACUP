@@ -1,157 +1,25 @@
-# AI Chat Universal Parser (ACUP) v1.0
+# AI Chat Universal Parser — Browser Scraper v1.1
 
-> **Parse, standardize, and dashboard AI conversations from Kimi, Mistral, DeepSeek, Google AI Studio, and Gemini.**
-
----
-
-## Table of Contents
-
-1. [Overview](#overview)
-2. [Supported Platforms & Export Methods](#supported-platforms--export-methods)
-   - [Kimi (kimi.com / kimi.ai)](#kimi-kimicom--kimiai)
-   - [Mistral (chat.mistral.ai)](#mistral-chatmistralai)
-   - [DeepSeek (chat.deepseek.com)](#deepseek-chatdeepseekcom)
-   - [Google AI Studio (aistudio.google.com)](#google-ai-studio-aistudiogooglecom)
-   - [Gemini (gemini.google.com)](#gemini-geminigooglecom)
-3. [Architecture](#architecture)
-4. [Standard File Format](#standard-file-format)
-5. [Layout Format (Markdown)](#layout-format-markdown)
-6. [Installation & Usage](#installation--usage)
-7. [Dashboard](#dashboard)
-8. [Directory Structure](#directory-structure)
-9. [Roadmap](#roadmap)
+> **Forensic-grade browser automation for platforms without native export APIs.**
 
 ---
 
-## Overview
+## What v1.1 Adds
 
-ACUP is a forensic-grade parser designed to ingest chat exports from major AI web applications and normalize them into:
+v1.0 required you to manually export chats via browser extensions or Takeout. **v1.1 eliminates that dependency** by automating the browser itself — logging into each platform, navigating conversation history, and extracting messages directly from the DOM.
 
-- **Standard JSON** — structured, queryable, machine-readable
-- **Standard CSV** — flattened for spreadsheet analysis
-- **Layout Markdown** — human-readable with explicit **Prompt** / **Response** separation
-- **Interactive HTML Dashboard** — spreadsheet-like overview + per-platform breakdowns
+### Key Capabilities
 
-### Why This Exists
-
-AI chat platforms lock conversations in proprietary interfaces. None offer a universal export format. For researchers, developers, and forensic analysts who need to:
-
-- Archive conversations with chain-of-custody integrity
-- Cross-reference prompts across multiple AI platforms
-- Build datasets for comparative analysis
-- Maintain evidentiary records of AI interactions
-
-…a unified parser is essential.
-
----
-
-## Supported Platforms & Export Methods
-
-### Kimi (kimi.com / kimi.ai)
-
-| Method | Format | Reliability | Notes |
-|--------|--------|-------------|-------|
-| **Browser Extension** (YourAIScroll, AI Chat Exporter) | JSON / Markdown / HTML | ⭐⭐⭐⭐⭐ | Recommended. One-click full conversation export. Preserves code blocks and tables. |
-| **Manual Copy-Paste** | Raw text | ⭐⭐⭐ | Lossy. Formatting degrades. Use as fallback only. |
-| **Developer Tools** | Network intercept | ⭐⭐⭐⭐ | Advanced. Capture XHR responses from `kimi.com` API endpoints. Requires session auth. |
-| **Official API Export** | ❌ Not available | — | Kimi does not provide a native bulk export or Takeout equivalent. |
-
-**Recommended Workflow:**
-1. Install [YourAIScroll](https://www.youraiscroll.com/) or [AI Chat Exporter](https://saveai.net/) extension
-2. Open conversation on kimi.com
-3. Click extension → Export as **JSON**
-4. Save to `raw/kimi/`
-
----
-
-### Mistral (chat.mistral.ai)
-
-| Method | Format | Reliability | Notes |
-|--------|--------|-------------|-------|
-| **Browser Extension** (YourAIScroll, AI Chat Exporter) | JSON / Markdown | ⭐⭐⭐⭐⭐ | Recommended. Le Chat has no native export. |
-| **Share Link** | Public URL | ⭐⭐⭐ | Generates `chat.mistral.ai/chat/...` link. Must be scraped or manually copied. |
-| **Manual Copy-Paste** | Raw text | ⭐⭐⭐ | Lossy. Tables and code blocks may collapse. |
-| **Official Export** | ❌ Not available | — | No GDPR Takeout or bulk download provided. |
-
-**Recommended Workflow:**
-1. Install multi-platform AI chat exporter extension
-2. Export conversation as **JSON** or **Markdown**
-3. Save to `raw/mistral/`
-
----
-
-### DeepSeek (chat.deepseek.com)
-
-| Method | Format | Reliability | Notes |
-|--------|--------|-------------|-------|
-| **Browser Extension** (DeepSeek Chat Exporter, YourAIScroll) | JSON / Markdown / CSV / PDF | ⭐⭐⭐⭐⭐ | Recommended. One-click export. |
-| **GDPR Data Request** | JSON (raw) | ⭐⭐⭐⭐ | Email `service@deepseek.com` with account email. 30-day response time. Data stored in China. |
-| **Print to PDF** | PDF | ⭐⭐ | Manual. Ctrl+P → Save as PDF. Formatting breaks on code blocks. |
-| **Settings → Chat History** | ❌ View only | — | Can view and delete history. No download button. |
-
-**Privacy Note:** DeepSeek stores data on servers in the PRC. For sensitive/acoustic forensics work, prefer browser extensions (local processing) over official data requests. citeweb_search:1#1
-
-**Recommended Workflow:**
-1. Install DeepSeek Chat Exporter or YourAIScroll
-2. Export as **JSON** for parsing or **Markdown** for human review
-3. Save to `raw/deepseek/`
-
----
-
-### Google AI Studio (aistudio.google.com)
-
-| Method | Format | Reliability | Notes |
-|--------|--------|-------------|-------|
-| **"Get Code" Button** | JSON (API-ready) | ⭐⭐⭐⭐⭐ | Cleanest programmatic format. Contains full `contents` array with `role`/`parts` structure. |
-| **Google Drive Auto-Save** | JSON-like (no extension) | ⭐⭐⭐⭐ | Saved in Drive → `AI Studio` folder. Raw API format with metadata. Rename to `.json` to parse. |
-| **Browser Extension** | Markdown / JSON | ⭐⭐⭐⭐ | Good for conversations where "Get code" is not used. |
-| **Manual Copy** | Raw text | ⭐⭐ | AI Studio uses Angular virtual scroller; copy-paste misses off-screen content. |
-| **Native Export Button** | ❌ Not available | — | No download button in UI. citeweb_search:1#2 |
-
-**Recommended Workflow:**
-1. In AI Studio conversation, click **Get code** → Copy JSON
-2. Paste into `raw/aistudio/conversation_name.json`
-3. OR: Access Drive → AI Studio folder → download auto-saved files → rename `.json`
-
-**Drive File Format:**
-```json
-{
-  "contents": [
-    {"role": "user", "parts": [{"text": "prompt here"}]},
-    {"role": "model", "parts": [{"text": "response here"}]}
-  ],
-  "model": "gemini-2.0-flash"
-}
-```
-
----
-
-### Gemini (gemini.google.com)
-
-| Method | Format | Reliability | Notes |
-|--------|--------|-------------|-------|
-| **Browser Extension** (Gemini Exporter, AI Chat Exporter) | JSON / Markdown / PDF / Word | ⭐⭐⭐⭐⭐ | Recommended for bulk export. Handles virtual scrolling. |
-| **Google Takeout** (My Activity → Gemini Apps) | JSON | ⭐⭐⭐ | Official but unreliable. Must have "Gemini Apps Activity" enabled. Many users report missing option. citeweb_search:1#0 |
-| **Per-Response Export** | Google Docs / Sheets | ⭐⭐⭐⭐ | Native. Exports **individual responses** only, not full threads. Good for specific answers. |
-| **Share Link** | Public URL | ⭐⭐⭐ | `g.co/gemini/share/...`. Can be scraped. Not available for Workspace accounts. |
-| **Gemini API** | JSON | ⭐⭐⭐⭐⭐ | If using API directly, history is in your infrastructure already. No export needed. |
-
-**Recommended Workflow:**
-1. For ongoing archiving: Use browser extension → Export as **JSON**
-2. For one-time backup: Request Google Takeout → Deselect all → My Activity → Gemini Apps → Export
-3. Save to `raw/gemini/`
-
-**Takeout JSON Structure:**
-```json
-{
-  "messages": [
-    {"role": "user", "text": "..."},
-    {"role": "model", "text": "..."}
-  ],
-  "title": "...",
-  "createTime": "2026-05-29T09:00:00Z"
-}
-```
+| Feature | Description |
+|---------|-------------|
+| **Playwright Engine** | Chromium-based automation with stealth headers |
+| **Virtual Scroll Capture** | Handles Angular/React virtualized lists (AI Studio, Gemini) |
+| **Content Deduplication** | SHA-256 hashing prevents double-capture during scroll |
+| **Forensic Screenshots** | Per-conversation before/after captures for chain-of-custody |
+| **Session Persistence** | Cookies & localStorage saved to `session.json` for re-runs |
+| **Credential Support** | DeepSeek email/OTP; Google SSO handled via browser |
+| **v1.0 Pipeline Integration** | Scraped output auto-feeds into JSON/CSV/Markdown/Dashboard |
+| **Selector Config** | JSON override for DOM selectors when sites change |
 
 ---
 
@@ -159,325 +27,361 @@ AI chat platforms lock conversations in proprietary interfaces. None offer a uni
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     INPUT LAYER                              │
+│                    BROWSER LAYER (Playwright)                │
 │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌────────┐│
 │  │  Kimi   │ │ Mistral │ │DeepSeek │ │AI Studio│ │ Gemini ││
-│  │ .json   │ │ .json   │ │ .json   │ │ .json   │ │ .json  ││
-│  │ .md     │ │ .md     │ │ .md     │ │ .md     │ │ .md    ││
+│  │  SSO    │ │  OAuth  │ │Email/  │ │ Google  │ │ Google ││
+│  │  OTP    │ │         │ │  OTP   │ │  SSO   │ │  SSO   ││
 │  └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘ └───┬────┘│
 └───────┼───────────┼───────────┼───────────┼──────────┼────┘
         │           │           │           │          │
         └───────────┴───────────┴───────────┴──────────┘
                               │
                     ┌─────────▼──────────┐
-                    │   AUTO-DETECT        │
-                    │   (Platform Parser)  │
+                    │   VIRTUAL SCROLL     │
+                    │   CAPTURE ENGINE     │
+                    │  (dedup + hash +     │
+                    │   screenshot)        │
                     └─────────┬────────────┘
                               │
         ┌─────────────────────┼─────────────────────┐
         │                     │                     │
 ┌───────▼──────┐   ┌────────▼────────┐   ┌──────▼──────┐
-│   KimiParser │   │ MistralParser   │   │ DeepSeekParser│
-│   (kimi)     │   │ (mistral)       │   │ (deepseek)    │
-└──────────────┘   └─────────────────┘   └───────────────┘
-┌──────────────┐   ┌─────────────────┐
-│ AIStudioParser│   │  GeminiParser   │   │ MarkdownParser  │
-│  (aistudio)   │   │   (gemini)      │   │  (fallback)     │
-└──────────────┘   └─────────────────┘   └─────────────────┘
-                              │
-                    ┌─────────▼──────────┐
-                    │  UNIFIED INTERNAL    │
-                    │  Conversation +    │
-                    │  Message dataclasses │
-                    └─────────┬────────────┘
-                              │
-        ┌─────────────────────┼─────────────────────┐
-        │                     │                     │
-┌───────▼──────┐   ┌────────▼────────┐   ┌──────▼──────┐
-│  JSON Export │   │   CSV Export    │   │  Markdown   │
-│  (standard)  │   │  (flattened)    │   │  (layout)   │
-│              │   │                 │   │             │
-│ conversations│   │  conversations  │   │  per-conv   │
-│    .json     │   │     .csv        │   │    .md      │
+│  Scraped     │   │  v1.0-compatible │   │  Forensic   │
+│  Raw JSON    │   │     JSON         │   │  Screenshots│
+│  (internal)  │   │  (parser input)  │   │   + Logs    │
+│              │   │                  │   │             │
+│ scraped_raw  │   │ conversations    │   │  .png +     │
+│    .json     │   │   _scraped.json  │   │  session    │
 └──────────────┘   └─────────────────┘   └─────────────┘
                               │
                     ┌─────────▼──────────┐
-                    │   DASHBOARD GEN    │
-                    │   (HTML/JS)        │
-                    │   dashboard.html   │
+                    │   v1.0 PARSER        │
+                    │   (ai_chat_parser.py)│
+                    │   → JSON / CSV / MD  │
                     └────────────────────┘
 ```
 
-### Parser Detection Strategy
-
-Each parser implements `detect(raw_data)`:
-
-1. **JSON input** → Check platform-specific keys (`kimi`, `mistral`, `deepseek`, `aistudio`, `gemini`)
-2. **Text/Markdown input** → Regex match role prefixes (`**User**`, `**Assistant**`, `# Prompt`, etc.)
-3. **AI Studio** → Detect `contents` array with `parts` objects
-4. **Gemini** → Detect `model` role (mapped to `assistant`) and `user` role
-5. **Fallback** → Generic Markdown parser attempts role extraction from common patterns
-
 ---
 
-## Standard File Format
+## Installation
 
-### JSON Schema (`conversations.json`)
-
-```json
-[
-  {
-    "conversation_id": "sha256_hash_16chars",
-    "platform": "kimi|mistral|deepseek|aistudio|gemini",
-    "title": "First 60 chars of first user message",
-    "created_at": "2026-05-27T14:23:00Z",
-    "updated_at": "2026-05-27T14:24:30Z",
-    "message_count": 4,
-    "user_message_count": 2,
-    "assistant_message_count": 2,
-    "word_count": 245,
-    "messages": [
-      {
-        "role": "user",
-        "content": "Analyse this acoustic harassment recording...",
-        "timestamp": "2026-05-27T14:23:00Z",
-        "model": "kimi-latest",
-        "metadata": {}
-      },
-      {
-        "role": "assistant",
-        "content": "Based on the spectral analysis...",
-        "timestamp": "2026-05-27T14:23:15Z",
-        "model": "kimi-latest",
-        "metadata": {}
-      }
-    ],
-    "metadata": {
-      "model": "kimi-latest",
-      "source": "browser_extension"
-    },
-    "source_file": "kimi_export_2026-05-27.json"
-  }
-]
-```
-
-### CSV Schema (`conversations.csv`)
-
-Flattened for spreadsheet analysis. One row per message:
-
-| Column | Description |
-|--------|-------------|
-| `conversation_id` | Parent conversation hash |
-| `platform` | Source platform |
-| `title` | Conversation title |
-| `conversation_created` | Conversation timestamp |
-| `message_role` | `user` / `assistant` / `system` |
-| `message_content` | Full message text |
-| `message_timestamp` | Message timestamp |
-| `message_model` | Model identifier |
-| `source_file` | Original export filename |
-
----
-
-## Layout Format (Markdown)
-
-Each conversation exports to a separate Markdown file with **explicit Prompt/Response separation**:
-
-```markdown
-# Acoustic Forensics Analysis
-
-**Platform:** kimi  
-**Conversation ID:** kimi_abc123  
-**Created:** 2026-05-27T14:23:00Z  
-**Source:** kimi_export_2026-05-27.json  
-**Messages:** 4  
-
----
-
-## Prompt 1
-**User** | 2026-05-27T14:23:00Z
-*(Model context: kimi-latest)*
-
-```
-Analyse this acoustic harassment recording for spectral anomalies
-```
-
-## Response 1
-**Assistant (kimi-latest)** | 2026-05-27T14:23:15Z
-
-```
-Based on the spectral analysis, I've identified several anomalies...
-```
-
-## Prompt 2
-**User** | 2026-05-27T14:24:00Z
-*(Model context: kimi-latest)*
-
-```
-Can you generate a Python script to detect these patterns automatically?
-```
-
-## Response 2
-**Assistant (kimi-latest)** | 2026-05-27T14:24:30Z
-
-```
-import numpy as np
-from scipy import signal
-...
-```
-
----
-
-*End of conversation. Exported by ACUP v1.0.0*
-```
-
-**Design Rationale:**
-- **Prompt** sections contain only user input (the "question" or "task")
-- **Response** sections contain only AI output (the "answer" or "artifact")
-- Code blocks preserve formatting for direct copy-paste into IDEs
-- Timestamps maintain chronological/evidentiary order
-- Model context aids reproducibility and version tracking
-
----
-
-## Installation & Usage
-
-### Requirements
-
-- Python 3.9+
-- No external dependencies (stdlib only)
-
-### Quick Start
+### Prerequisites
 
 ```bash
-# 1. Place raw exports in platform subdirectories
-mkdir -p raw/{kimi,mistral,deepseek,aistudio,gemini}
+# 1. Python 3.9+
+python --version
 
-# 2. Run parser on directory
-python ai_chat_parser.py raw/ --pattern "*.json" \
-  --json-out conversations.json \
-  --csv-out conversations.csv \
-  --md-out markdown_layouts/
+# 2. Install Playwright
+pip install playwright
 
-# 3. Generate dashboard
-python generate_dashboard.py --input conversations.json --output dashboard.html
-
-# 4. Open dashboard in browser
-open dashboard.html
+# 3. Install browser binaries (Chromium only)
+playwright install chromium
 ```
 
-### Single File Parsing
-
-```bash
-python ai_chat_parser.py raw/kimi/export_001.json \
-  --json-out out.json \
-  --csv-out out.csv \
-  --md-out ./layouts
-```
-
-### Programmatic Use
-
-```python
-from ai_chat_parser import parse_directory, export_json, export_csv, export_markdown_layout
-
-conversations = parse_directory("./raw", "*.json")
-export_json(conversations, "archive.json")
-export_csv(conversations, "archive.csv")
-export_markdown_layout(conversations, "./markdown_layouts")
-```
-
----
-
-## Dashboard
-
-The generated `dashboard.html` provides:
-
-### Global Overview
-- **Stat cards**: Total conversations, messages, words, platforms
-- **Master table**: All conversations with platform badges, message counts, word counts, dates
-- **Real-time search**: Filter by title, platform, or content keywords
-
-### Per-Platform Tables
-- One card per detected platform (Kimi, Mistral, DeepSeek, AI Studio, Gemini)
-- Conversation listing with title, message count, word count, creation date
-- Responsive grid layout (2-3 columns on desktop, 1 on mobile)
-
-### Screenshot Structure
+### Project Structure
 
 ```
-┌────────────────────────────────────────────┐
-│  🤖 AI Chat Universal Dashboard            │
-│  5 Conversations | 22 Messages | 3,770 W  │
-├────────────────────────────────────────────┤
-│  [Search all conversations...      ]     │
-├────────────────────────────────────────────┤
-│  Platform | Title | Msgs | U/A | Words | Date │
-│  ─────────────────────────────────────────  │
-│  KIMI     | Acoustic Forensics | 4 | 2/2 | 245 │
-│  DEEPSEEK | Side-Channel Att.. | 6 | 3/3 | 512 │
-│  GEMINI   | Legal Framework.. | 3 | 1/2 |1890 │
-│  ...                                       │
-├────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐          │
-│  │   KIMI      │  │  MISTRAL    │          │
-│  │  1 convo    │  │  1 convo    │          │
-│  │  4 msgs     │  │  5 msgs     │          │
-│  │ [table]     │  │ [table]     │          │
-│  └─────────────┘  └─────────────┘          │
-│  ┌─────────────┐  ┌─────────────┐          │
-│  │  DEEPSEEK   │  │   GEMINI    │          │
-│  │  1 convo    │  │  1 convo    │          │
-│  │  6 msgs     │  │  3 msgs     │          │
-│  │ [table]     │  │ [table]     │          │
-│  └─────────────┘  └─────────────┘          │
-└────────────────────────────────────────────┘
-```
-
----
-
-## Directory Structure
-
-```
-acup-project/
-├── ai_chat_parser.py          # Core parser (stdlib only)
-├── generate_dashboard.py      # HTML dashboard generator
-├── sample_conversations.json  # Demo data (5 platforms)
-├── dashboard.html             # Generated dashboard (from sample)
-├── raw/                       # Your raw exports (create this)
-│   ├── kimi/
-│   ├── mistral/
-│   ├── deepseek/
-│   ├── aistudio/
-│   └── gemini/
-├── parsed/                    # Output directory (auto-created)
-│   ├── conversations.json     # Standard JSON
-│   ├── conversations.csv      # Standard CSV
-│   ├── stats.json             # Aggregate statistics
-│   └── markdown_layouts/      # Per-conversation Markdown
-│       ├── kimi_Acoustic_F...abc123.md
-│       ├── deepseek_Side-C...def456.md
-│       └── ...
+acup-v1.1/
+├── ai_chat_parser.py          # v1.0 core parser (unchanged)
+├── generate_dashboard.py      # v1.0 dashboard generator (unchanged)
+├── browser_scraper.py         # v1.1 scraper engine (NEW)
+├── run_scraper.py             # v1.1 CLI wrapper + pipeline (NEW)
+├── credentials_template.json  # Credential config template (NEW)
+├── scraper_config.json        # DOM selector overrides (NEW)
+├── requirements.txt           # v1.1 deps (NEW)
+├── scraped/                   # Output directory (auto-created)
+│   ├── session.json           # Cookie/session persistence
+│   ├── screenshots/           # Forensic PNG captures
+│   ├── scraped_raw.json       # Internal scraper format
+│   ├── conversations_scraped.json  # v1.0-compatible input
+│   ├── conversations.json     # Parsed standard JSON
+│   ├── conversations.csv      # Parsed CSV
+│   ├── markdown_layouts/    # Parsed Markdown
+│   ├── stats.json             # Aggregate stats
+│   └── dashboard.html         # Generated dashboard
 └── README.md                  # This file
 ```
 
 ---
 
-## Roadmap
+## Usage
 
-| Version | Feature | Priority |
-|---------|---------|----------|
-| v1.1 | **Browser automation scraper** (Selenium/Playwright) for platforms without exports | High |
-| v1.2 | **Image attachment extraction** and base64 embedding in Markdown | Medium |
-| v1.3 | **Diff view**: Compare same prompt across multiple platforms | Medium |
-| v1.4 | **Notion/Obsidian sync** direct from parser | Low |
-| v1.5 | **Cryptographic verification** (SHA-256 per message) for chain-of-custody | High |
-| v2.0 | **Streamlit dashboard** as alternative to static HTML | Medium |
+### 1. Interactive Scrape (Recommended First Run)
+
+```bash
+# Scrape Kimi and Gemini — browser window opens for manual login
+python run_scraper.py --platforms kimi gemini
+```
+
+**What happens:**
+1. Browser opens to `kimi.com`
+2. You complete login (OTP/SSO) in the window
+3. Scraper detects sidebar → auto-navigates conversation list
+4. Virtual-scroll capture begins with progress logging
+5. Screenshots saved to `scraped/screenshots/`
+6. Session cookies saved to `scraped/session.json`
+7. Repeats for `gemini.google.com`
+
+### 2. Headless Re-Run (After Session Established)
+
+```bash
+# Re-run using saved session — no browser window
+python run_scraper.py --platforms kimi gemini --headless --session scraped/session.json
+```
+
+> ⚠️ **Headless mode may trigger bot detection** on some platforms. Use `--headless` only after session is warm.
+
+### 3. Full Pipeline (Scrape → Parse → Dashboard)
+
+```bash
+# Scrape all platforms, auto-run parser, generate dashboard
+python run_scraper.py --platforms all --parse --dashboard --max 20
+```
+
+**Pipeline output:**
+- `scraped/conversations.json` — standard v1.0 JSON
+- `scraped/conversations.csv` — flattened spreadsheet
+- `scraped/markdown_layouts/` — per-conversation Prompt/Response MD
+- `scraped/dashboard.html` — interactive overview
+
+### 4. DeepSeek with Credentials
+
+```bash
+# Create credentials file
+cp credentials_template.json my_creds.json
+# Edit my_creds.json with your DeepSeek email
+
+python run_scraper.py --platforms deepseek --credentials my_creds.json
+```
+
+If password is provided, scraper attempts form fill. If empty, it waits for OTP entry in browser.
+
+### 5. Per-Platform Scrape (Direct API)
+
+```python
+import asyncio
+from browser_scraper import ScraperRunner
+
+runner = ScraperRunner(
+    platforms=["kimi", "deepseek"],
+    output_dir="./forensic_archive",
+    headless=False,
+    max_conversations=10
+)
+results = asyncio.run(runner.run())
+
+for conv in results:
+    print(f"{conv.platform}: {conv.title} ({len(conv.messages)} messages)")
+    print(f"  Screenshots: {conv.screenshots}")
+    print(f"  Log entries: {len(conv.log)}")
+```
+
+---
+
+## Platform-Specific Notes
+
+### Kimi (kimi.com)
+- **Auth:** Phone/email OTP (PRC-based). No password-only login.
+- **Scraper behavior:** Opens `kimi.com/chat`, waits for sidebar. You enter OTP in browser.
+- **Virtual scroll:** Moderate. Messages stay in DOM once loaded.
+- **Selector stability:** Medium. Class names are hashed in production builds. Use `scraper_config.json` to update.
+
+### Mistral (chat.mistral.ai)
+- **Auth:** Google/Microsoft OAuth or email magic link.
+- **Scraper behavior:** Opens chat.mistral.ai, waits for sidebar. Complete OAuth in browser.
+- **Virtual scroll:** Light. Conversation list is short for most users.
+- **Note:** Le Chat has no conversation history API at all — this scraper is the only automated method.
+
+### DeepSeek (chat.deepseek.com)
+- **Auth:** Email + password or email + OTP.
+- **Scraper behavior:** Supports credential auto-fill for email/password. OTP requires manual entry.
+- **Virtual scroll:** Moderate. Code blocks render lazily.
+- **Privacy warning:** Scraping occurs client-side (your machine). No data sent to DeepSeek servers beyond normal chat usage.
+
+### Google AI Studio (aistudio.google.com)
+- **Auth:** Google SSO (same as Gmail).
+- **Scraper behavior:** Opens aistudio.google.com/chat. If already logged into Google, proceeds automatically.
+- **Virtual scroll:** **Aggressive.** Angular CDK virtual scroll unmounts off-screen messages. The scraper uses incremental 500px scroll steps with 300ms settle time to force re-mounting.
+- **Known issue:** Very long conversations (>100 turns) may lose early turns due to virtual scroll buffer limits. Use "Get code" export for critical long threads.
+
+### Gemini (gemini.google.com)
+- **Auth:** Google SSO.
+- **Scraper behavior:** Opens gemini.google.com/app. Auto-detects logged-in state.
+- **Virtual scroll:** **Aggressive.** Similar to AI Studio. Uses 500px incremental scroll.
+- **Limitation:** Workspace accounts may disable share links; scraper still works if you have access.
+
+---
+
+## Forensic Features
+
+### Chain of Custody
+
+Every scraped conversation includes:
+
+```json
+{
+  "scraped_at": "2026-05-31T01:35:00+00:00",
+  "url": "https://kimi.com/chat/abc123",
+  "screenshots": [
+    "scraped/screenshots/kimi_convo_start_20260531_013500.png",
+    "scraped/screenshots/kimi_convo_end_full_20260531_013515.png"
+  ],
+  "messages": [
+    {
+      "role": "assistant",
+      "content": "...",
+      "element_hash": "a1b2c3d4e5f6...",
+      "model": "kimi-latest"
+    }
+  ]
+}
+```
+
+- `scraped_at` — ISO 8601 UTC timestamp
+- `screenshots` — Before/after visual verification
+- `element_hash` — SHA-256 of raw DOM innerHTML for tamper detection
+- `url` — Source URL for reproducibility
+
+### Session Persistence
+
+`session.json` stores cookies and localStorage state:
+
+```json
+{
+  "cookies": [...],
+  "storage": { "origins": [...] },
+  "saved_at": "2026-05-31T01:35:00+00:00"
+}
+```
+
+This allows:
+- Re-running scraper without re-authenticating
+- Transferring session between machines (treat as sensitive — contains auth tokens)
+- Scheduled/cron-based scraping
+
+### Logging
+
+Every scraper action is logged with UTC timestamps:
+
+```
+[2026-05-31T01:35:00+00:00] kimi: Starting scraper run.
+[2026-05-31T01:35:02+00:00] kimi: Already logged in (sidebar detected).
+[2026-05-31T01:35:05+00:00] kimi: Found 12 conversation URLs.
+[2026-05-31T01:35:06+00:00] kimi: [1/12] Scraping: https://kimi.com/chat/abc123
+[2026-05-31T01:35:08+00:00] kimi: Screenshot saved: scraped/screenshots/kimi_convo_start_...
+[2026-05-31T01:35:15+00:00] kimi: Scroll progress: 8 items, scrollTop=800
+[2026-05-31T01:35:22+00:00] kimi: Scroll progress: 14 items, scrollTop=1600
+[2026-05-31T01:35:25+00:00] kimi: End of scroll detected.
+[2026-05-31T01:35:25+00:00] kimi: Virtual scroll complete: 14 unique items captured.
+```
+
+---
+
+## Configuration
+
+### DOM Selector Overrides
+
+When platforms update their UI, class names change. Update `scraper_config.json` without touching code:
+
+```json
+{
+  "kimi": {
+    "chat_container": "[class*='chat-layout']",
+    "message_turn": "[class*='message-row']",
+    "user_indicator": "[class*='user-bubble']",
+    "assistant_indicator": "[class*='ai-bubble']"
+  },
+  "gemini": {
+    "chat_container": "[class*='conversation-scroll']",
+    "message_turn": "[class*='message-block']"
+  }
+}
+```
+
+Pass to scraper:
+```python
+from browser_scraper import ScraperRunner
+runner = ScraperRunner(
+    platforms=["kimi"],
+    credentials={"kimi": {"selectors": {...}}}
+)
+```
+
+### Rate Limiting & Delays
+
+Built-in delays are conservative:
+- Scroll step: 500–800px
+- Settle time: 300ms per step
+- Max scrolls: 150–200 per conversation
+
+To go faster (risk of detection):
+```python
+# In browser_scraper.py, modify _scroll_virtual_list defaults
+scroll_step=1200,  # faster
+# Or reduce sleep in the loop
+```
+
+To go slower (safer for large accounts):
+```python
+scroll_step=300,   # slower, more granular
+# Increase sleep
+```
+
+---
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `Timeout waiting for sidebar` | Not logged in | Complete login in browser window; session will save |
+| `0 items captured` | Selectors outdated | Update `scraper_config.json` with new class names from DevTools |
+| `Missing early messages` | Virtual scroll buffer | Reduce `scroll_step` to 300; increase `max_scrolls` |
+| `Bot detection / CAPTCHA` | Headless mode or fast scraping | Use `--headless=False`; increase delays; use residential IP |
+| `Duplicate messages` | Deduplication hash collision | Rare. Check `element_hash` in output to verify |
+| `Session expired` | Google/Kimi token timeout | Re-run without `--session` to re-authenticate |
+
+### Updating Selectors Manually
+
+1. Open platform in browser → DevTools → Inspect message element
+2. Copy outer HTML of a user message and an assistant message
+3. Note the `class` attribute (e.g., `class="message user-message"`)
+4. Update `scraper_config.json`:
+   ```json
+   {"kimi": {"message_turn": ".message", "user_indicator": ".user-message"}}
+   ```
+
+---
+
+## Security & Privacy
+
+- **Local-only processing:** All scraping occurs in your Playwright browser on your machine. No data sent to third-party APIs.
+- **Session file sensitivity:** `session.json` contains authentication cookies. Store with `chmod 600` and exclude from Git.
+- **Screenshot storage:** PNGs contain conversation content. Encrypt at rest if handling sensitive data.
+- **DeepSeek note:** Scraping does not trigger the GDPR data-request process. Data stays local.
+
+---
+
+## Roadmap Integration
+
+v1.1 fulfills the **"Browser automation scraper"** milestone from the v1.0 roadmap.
+
+| Version | Status | Feature |
+|---------|--------|---------|
+| v1.0 | ✅ Complete | Parser + Dashboard for manual exports |
+| **v1.1** | ✅ **Complete** | **Browser automation scraper** |
+| v1.2 | Planned | Image attachment extraction & base64 embedding |
+| v1.3 | Planned | Cross-platform diff view (same prompt, different AIs) |
+| v1.4 | Planned | Notion/Obsidian direct sync |
+| v1.5 | Planned | Cryptographic verification (SHA-256 per message) |
+
+> v1.1 already includes per-message `element_hash` (SHA-256 of DOM content), which is the foundation for v1.5's full chain-of-custody verification.
 
 ---
 
 ## License
 
-MIT License — Free to use, modify, and distribute. Your conversations belong to you.
+MIT — Your data belongs to you. Scrape responsibly.
 
 ---
 
